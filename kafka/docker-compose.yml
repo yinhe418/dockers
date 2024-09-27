@@ -1,0 +1,68 @@
+version: '3'
+
+services:
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    container_name: zookeeper
+    environment:
+      - 'ALLOW_ANONYMOUS_LOGIN=yes'
+    ports:
+      - '2181:2181'
+    volumes:
+      - ./zookeeper/data:/bitnami/zookeeper/data
+      - ./zookeeper/conf:/opt/bitnami/zookeeper/conf
+    networks:
+      kfk-network:
+        aliases:
+          - zookeeper   
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    container_name: kafka
+    privileged: true
+    restart: always
+    ports:
+      - '9092:9092'
+    depends_on:
+      - zookeeper
+    links:
+      - zookeeper 
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    volumes:
+      - ./kafka/config:/opt/bitnami/kafka/config
+    networks:
+      kfk-network:
+        aliases:
+          - kafka   
+
+  kafka-manager:
+    # image: "radarbase/kafka-manager:latest"
+    image : kafkamanager/kafka-manager:latest
+    container_name: kafka-manager
+    privileged: true
+    restart: always
+    depends_on:
+      - kafka
+    environment:
+      - ZK_HOSTS=zookeeper:2181
+    links:
+      - zookeeper 
+      - kafka
+    ports:
+      - '9001:9000'
+    networks:
+      kfk-network:
+        aliases:
+          - kafka-manager
+
+networks:
+  #网络名称，如果没有此网络，会新建
+  kfk-network:
+    #驱动
+    driver: bridge

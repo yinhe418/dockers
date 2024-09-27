@@ -1,0 +1,87 @@
+version: '3' #docker-compose语法的版本
+services:
+  php: #创建 php的容器
+#    image: emojidaophp:v1.7 #镜像地址
+    image: yinhe418/emojidaophp:v1.9 #镜像地址
+    container_name: emojidao-php
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./php/etc:/usr/local/php7/etc #把容器的 php的etc目录映射到 ./php/etc
+      - /Users/emojidao/Work/app/emojidao:/home/www/  #把容器的代码根目录 映射到/data/www
+
+    expose:
+      - "9000"
+    privileged: true
+#    command: /usr/sbin/init
+    networks:
+      emojidao-network:
+        aliases:
+          - php
+  nginx: #创建 nginx容器
+#    image: emojidaonginx:v1.5 #镜像地址
+    image: yinhe418/emojidaonginx:v1.5 #镜像地址
+    container_name: emojidao-nginx
+    restart: always
+    ports:  #映射 80和443端口到本机
+      - 80:80
+#    env_file: ./nginx/.env
+    volumes:
+      - ./nginx/conf:/usr/local/openresty/nginx/conf  #把容器的nginx的conf映射到 ./nginx/conf，
+      - ./nginx/lua:/usr/local/openresty/nginx/lua  #把容器的nginx的conf映射到 ./nginx/lua，
+      - ./nginx/logs:/usr/local/openresty/nginx/logs  #把容器的nginx的log映射到 ./nginx/log，
+    extra_hosts:
+      - "dev.double.lease:127.0.0.1"
+    privileged: true
+    environment:
+      - TZ=Asia/Shanghai
+#    command: /usr/sbin/init
+    links:
+      - php
+      - node
+    networks:
+      emojidao-network:
+        aliases:
+          - nginx
+  node: #创建 node 容器
+#    image: emojidaonodejs:v1.2 #镜像地址
+    # image: yinhe418/emojidaonodejs:v1.2 #镜像地址
+    image: yinhe418/emojidaonvm:v1.3 #镜像地址
+    container_name: emojidao-node
+    restart: always
+    volumes:
+      - /Users/emojidao/Work/app/emojidao:/home/www/wwwroot
+      - /Users/emojidao/.ssh:/home/www/.ssh
+    environment:
+      - TZ=Asia/Shanghai
+    privileged: true
+    ports:  #映射 
+      - 4050:4050
+    command: /bin/bash
+    tty: true
+    networks:
+      emojidao-network:
+        aliases:
+          - node
+  go: #创建 go 容器
+#    image: emojidaogo:v1.1 #镜像地址
+    image: yinhe418/emojidaogo:v1.1 #镜像地址
+    container_name: emojidao-go
+    restart: always
+    volumes:
+      - /Users/emojidao/Work/app/emojidao/go:/home/www/wwwroot
+    privileged: true
+    environment:
+      - TZ=Asia/Shanghai
+    command: /bin/bash
+    tty: true
+    networks:
+      emojidao-network:
+        aliases:
+          - go
+networks:
+  #网络名称，如果没有此网络，会新建
+  emojidao-network:
+    #驱动
+    driver: bridge

@@ -1,0 +1,4 @@
+elk/elastic/data/
+elk/elastic/logs
+elk/logstash/data
+.DS_Store

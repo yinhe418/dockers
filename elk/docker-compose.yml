@@ -1,0 +1,117 @@
+version: '3'
+
+services:
+  elasticsearch :
+    image : elasticsearch:7.17.12
+    container_name: elasticsearch
+    privileged: true
+    restart: always
+    environment:
+      - cluster.name=elk-app
+      - node.name=elk-app-node-1
+      - network.host=0.0.0.0
+      - network.bind_host=0.0.0.0
+      - network.publish_host=192.168.110.161
+      # - network.host=192.168.110.161
+      #- cluster.initial_master_nodes=["elk-app-node-1"]
+      - http.cors.enabled=true
+      - http.cors.allow-origin="*"
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - TZ=Asia/Shanghai
+    ulimits:
+      memlock:
+        soft : -1
+        hard : -1 
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - ./elastic/data:/usr/share/elasticsearch/data
+      - ./elastic/config:/usr/share/elasticsearch/config
+      - ./elastic/plugins:/usr/share/elasticsearch/plugins
+      - ./elastic/logs:/usr/share/elasticsearch/logs
+    ports:
+      - 9200:9200
+      - 9300:9300
+    networks:
+      elk-network:
+        aliases:
+          - elasticsearch
+
+  kibana:
+    image: kibana:7.17.12
+    container_name: kibana
+    privileged: true
+    restart: always
+    ports:
+      - 5601:5601
+    environment:
+      - elasticsearch_url=elasricsearch:9200
+      - TZ=Asia/Shanghai
+    depends_on:
+      - elasticsearch
+    links:
+      - elasticsearch
+    volumes:
+      - ./kibana/config:/usr/share/kibana/config
+    networks:
+      elk-network:
+        aliases:
+          - kibana
+
+  # logstash:
+  #   image: logstash:7.17.12
+  #   restart: always
+  #   container_name: logstash
+  #   privileged: true
+  #   volumes:
+  #     - ./logstash/pipeline:/usr/share/logstash/pipeline
+  #     - ./logstash/config:/usr/share/logstash/config
+  #     - ./logstash/data:/usr/share/logstash/data
+  #   ports:
+  #     - "5044:5044"
+  #     - "9600:9600"
+  #   environment:
+  #     - TZ=Asia/Shanghai
+  #     - "LS_JAVA_OPTS=-Xms512m -Xmx512m"
+  #     # LS_JAVA_OPTS: "-Xms512m -Xmx512m"
+  #   depends_on:
+  #     - elasticsearch
+  #   networks:
+  #     elk-network:
+  #       aliases:
+  #         - logstash
+
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - TZ=Asia/Shanghai
+    volumes:
+      - './grafana/data:/var/lib/grafana'
+      - './grafana/etc:/etc/grafana'
+      - './grafana/logs:/var/log/grafana'
+    ports:
+      - "3000:3000"
+    depends_on:
+      - elasticsearch
+    privileged: true
+    networks:
+      elk-network:
+        aliases:
+          - grafana
+
+
+networks:
+  #网络名称，如果没有此网络，会新建
+  elk-network:
+    #驱动
+    driver: bridge
